@@ -12,7 +12,5 @@
     Request Content<br><textarea name="content" style="width: 750px; height: 200px;"></textarea><br /><br />
     <input type="submit" value="Verify" />
 </form>
-    
-</form>
 
 @endsection

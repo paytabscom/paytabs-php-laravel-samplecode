@@ -16,6 +16,7 @@ class Controller extends BaseController
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     private $serverKey = "SDJNNWHNZD-JBJ9WM9JMH-2KWJHWDLMW";
+    private $profileId = "64594";
 
     /**
      * Show the profile for a given user.
@@ -45,7 +46,7 @@ class Controller extends BaseController
 
         $headers = ['Authorization' => $this->serverKey];
         $requestBody= '{
-            "profile_id":         64594,
+            "profile_id":         '. $this->profileId. ',
             "tran_type":          "sale",
             "tran_class":         "ecom",
             "cart_description":   "Desc of the items/services",
@@ -152,23 +153,7 @@ class Controller extends BaseController
         $signature= $request->header('signature');
         $content= $request->getContent(); //get the request raw content
 
-        
-        // Generate array from the request JSON content
-        $contentAsArray= json_decode($content, 1);
-        //echo '<br />array:<br /><pre>';print_r($contentAsArray); echo '</pre><br />';
-
-        // Ignore empty values fields
-        $signature_fields = array_filter($contentAsArray);
-
-        // Sort form fields 
-        ksort($signature_fields);
-        //echo '<br />filtered:<br /><pre>';print_r($signature_fields); echo '</pre><br />';
-
-        // Generate URL-encoded query string of Post fields except signature field.
-        $query = http_build_query($signature_fields);
-        //echo '<br />querystring:<br />'. $query. '<br /><br /><br />';
-
-        $calculatedSignature = hash_hmac('sha256', $query, $this->serverKey);
+        $calculatedSignature = hash_hmac('sha256', $content, $this->serverKey);
         if (hash_equals($calculatedSignature, $signature ) === TRUE) {
           $response= 'Valid request';
         }else{
@@ -254,16 +239,87 @@ class Controller extends BaseController
     }
 
     /**
-     * Show the profile for a given user.
+     * Show sample managed form
      *
-     * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show($id)
+    public function managedForm()
     {
-        return view('user.profile', [
-            'user' => User::findOrFail($id)
+        return view('hosted_payment.managed_form');
+    }
+
+    /**
+     * Show sample managed form
+     *
+     * @return \Illuminate\View\View
+     */
+    public function processManagedForm(Request $request)
+    {
+        $token = $request->input('token');
+
+        $client = new Client([
+            'base_uri' => 'https://secure.paytabs.sa/payment/', // Base URI is used with relative requests
+            'timeout'  => 2.0, // You can set any number of default request options.
+            'verify'   => false, //disable SSL cerificate verification
+        ]);
+
+        $headers = ['Authorization' => $this->serverKey,
+            'Content-Type'=> 'application/json'];
+        $requestBody= '{
+        "profile_id": '. $this->profileId. ',
+        "tran_type": "sale",
+        "tran_class": "ecom",
+        "cart_id": "cart_77771",
+        "cart_currency": "sar",
+        "cart_amount": 12.3,
+        "cart_description": "Description of the items/services",
+        "paypage_lang": "en",
+        "customer_details": {
+            "name": "first last",
+            "email": "email@domain.com",
+            "phone": "0522222222",
+            "street1": "address street",
+            "city": "dubai",
+            "state": "du",
+            "country": "AE",
+            "zip": "12345",
+            "ip": "1.1.1.1"
+        },
+        "shipping_details": {
+            "name": "name1 last1",
+            "email": "email1@domain.com",
+            "phone": "971555555555",
+            "street1": "street2",
+            "city": "dubai",
+            "state": "dubai",
+            "country": "AE",
+            "zip": "54321"
+        },
+        "return": "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02",
+        "callback": "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02",
+        "payment_token": "'. $token. '"
+        }';
+
+        $paymentRequest = new \GuzzleHttp\Psr7\Request('POST', 'request', $headers, $requestBody);
+        $response = $client->send($paymentRequest, ['timeout' => 2]);
+        $responseBody = $response->getBody();
+        $jsonResponseAsObj= \GuzzleHttp\Utils::jsonDecode($responseBody);
+
+        if($response->getStatusCode() ==200 && $jsonResponseAsObj->redirect_url ){
+            //redirect
+            $jsonResponseAsObj->redirect_url;
+            return \Illuminate\Support\Facades\Redirect::to($jsonResponseAsObj->redirect_url);
+        }
+        
+        $output= 'StatusCode: '. $response->getStatusCode(). '<br />'. 'Reason: '. $response->getReasonPhrase(). '<br /><br />';
+
+        //$output .= 'responseBody: <pre>'. $responseBody. '</pre><br />';
+        // Implicitly cast the body to a string and print it
+        $output .= 'JsonResponseAsObj<pre>'. print_r($jsonResponseAsObj, true). '</pre>';
+        
+        return view('simple_output', [
+            'output' => $output
         ]);
     }
-    
+
 }

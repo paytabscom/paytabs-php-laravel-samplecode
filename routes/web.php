@@ -23,3 +23,7 @@ Route::get('/initiate', [Controller::class, 'initiateHostedPayment'])->name('ini
 Route::get('/collectRequest', [Controller::class, 'collectRequestDetails'])->name('collect_request_details');
 
 Route::post('/verifyRequest', [Controller::class, 'verifyRequest'])->name('verify_request');
+
+Route::match( ['get', 'post'], '/managedForm', [Controller::class, 'managedForm'])->name('managed_form');
+
+Route::match( ['post'], '/processManagedForm', [Controller::class, 'processManagedForm'])->name('process_managed_form');
