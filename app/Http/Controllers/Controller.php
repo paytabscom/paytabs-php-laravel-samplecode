@@ -9,7 +9,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Route;
-
+use Illuminate\Support\Facades\DB;
 
 class Controller extends BaseController
 {
@@ -17,6 +17,9 @@ class Controller extends BaseController
 
     private $serverKey = "SDJNNWHNZD-JBJ9WM9JMH-2KWJHWDLMW";
     private $profileId = "64594";
+    private $returnUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/return";
+    private $callbackUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/callback";
+    private $ipnUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/ipn";
 
     /**
      * Show the profile for a given user.
@@ -25,19 +28,47 @@ class Controller extends BaseController
      */
     public function index()
     {
-        return view('index', [
-            'user' => 'test'
+        /* raw SQL
+         * $users = DB::select('select * from users where active = :id', ['id' => 1]);
+         * Running SQL Queries: (fluent query builder)
+         * OR: $users = DB::table('users')->get();
+         * OR: $user = DB::table('users')->where('name', 'John')->first();
+         * foreach ($users as $user) {
+         *     echo $user->name;
+         * }
+         */
+//        return response('Hello World', 200)
+//            ->header('Content-Type', 'text/plain');
+        $carts = DB::table('cart')->get();
+
+        return view('home_carts', [
+            'carts' => $carts
         ]);
+    }
+
+    /**
+     * Show the profile for a given user.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function purchaseWithHostedPayment()
+    {        
+        return view('hosted_payment.purchase_with_hosted_payment');
     }
 
     /**
      * 
      * @return \Illuminate\View\View
      */
-    public function initiateHostedPayment()
+    public function doHostedPayment(Request $request)
     {
-//        return response('Hello World', 200)
-//            ->header('Content-Type', 'text/plain');
+        $products = $request->input('products');
+        $productList= serialize(array_keys($products));
+        $total= array_sum($products);
+        
+        DB::insert('insert into cart (products, total) values (?,?)', [$productList, $total]);
+        $cartId = DB::getPdo()->lastInsertId();
+
         $client = new Client([
             'base_uri' => 'https://secure.paytabs.sa/payment/', // Base URI is used with relative requests
             'timeout'  => 2.0, // You can set any number of default request options.
@@ -50,16 +81,15 @@ class Controller extends BaseController
             "tran_type":          "sale",
             "tran_class":         "ecom",
             "cart_description":   "Desc of the items/services",
-            "cart_id":            "Invoice1",
+            "cart_id":            "'. $cartId. '",
             "cart_currency":      "sar",
-            "cart_amount":        1,
-            "callback":           "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02",
-            "return":             "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02"
+            "cart_amount":        '. $total. ',
+            "callback":           "'. $this->callbackUrl. '",
+            "return":             "'. $this->returnUrl. '"
           }';
 
-
-        $request = new \GuzzleHttp\Psr7\Request('POST', 'request', $headers, $requestBody);
-        $response = $client->send($request, ['timeout' => 2]);
+        $paymentRequest = new \GuzzleHttp\Psr7\Request('POST', 'request', $headers, $requestBody);
+        $response = $client->send($paymentRequest, ['timeout' => 2]);
         $output= 'StatusCode: '. $response->getStatusCode(). '<br />'. 'Reason: '. $response->getReasonPhrase(). '<br /><br />';
         
         $responseBody = $response->getBody();
@@ -101,14 +131,19 @@ class Controller extends BaseController
         $requestContent = $request->input('content');
 
         //if callback chosen: simulate the request created by paytabs generate as a callback (and caught by webhook.io for us)
-        if($requestequestType == 'callback'){            
-            //show the response returned by the callback request verifier: verifyCallbackRequest
+        if($requestequestType == 'callback'){
+            //show the response returned by the callback request verifier: paymentCallback
             $this->simulateCallbackRequest($requestSignature, $requestContent);
         }
         //if return chosen: simulate the request created by paytabs generate as a return (and caught by webhook.io for us)
-        elseif($requestequestType == 'return'){            
-            //show the response returned by the callback request verifier: verifyReturnRequest
-            $this->simulateReturnRequest($requestSignature, $requestContent);
+        elseif($requestequestType == 'return'){
+            //show the response returned by the return request verifier: verifyReturnRequest
+            $this->simulateReturnRequest($requestContent);
+        }
+        //if return chosen: simulate the request created by paytabs generate as an IPN (and caught by webhook.io for us)
+        elseif($requestequestType == 'ipn'){
+            //show the response returned by the IPN request verifier: verifyReturnRequest
+            $this->simulateIpnRequest($requestContent);
         }
 
     }
@@ -119,7 +154,7 @@ class Controller extends BaseController
     private function simulateCallbackRequest($signature, $content) {
         
         $baseUri= url(''). '/';
-        $route= Route::getRoutes()->getByName('verify_callback_request');
+        $route= Route::getRoutes()->getByName('payment_callback');
         $uri= $route->uri();
         
         $client = new Client([
@@ -144,30 +179,90 @@ class Controller extends BaseController
         
         echo $response->getStatusCode();
     }
-    
+
     /**
      * RESTful callable action receives the callback request from the payment gateway after payment is processed
      */
-    public function verifyCallbackRequest(Request $request){
+    public function paymentCallback(Request $request){
+        //verify that it is a valid callback request
+        if($this->isValidCallbackRequest($request)){
+            //update the cart payment status
+            $this->updateCartByPaymentCallback($request);
+            $response= 'valid callback request';
+        }else{
+            $response= 'INVALID callback request';
+        }
 
+        return response($response, 200)
+            ->header('Content-Type', 'text/plain');        
+    }
+
+    /**
+     * verify that it is a valid callback or IPN request
+     */
+    private function isValidCallbackRequest($request){
         $signature= $request->header('signature');
         $content= $request->getContent(); //get the request raw content
 
         $calculatedSignature = hash_hmac('sha256', $content, $this->serverKey);
-        if (hash_equals($calculatedSignature, $signature ) === TRUE) {
-          $response= 'Valid request';
+        return (hash_equals($calculatedSignature, $signature ) === TRUE);
+    }
+
+    /** 
+     * update cart according to the payment final status
+     */
+    private function updateCartByPaymentCallback($request){
+        $content= $request->getContent();
+        $jsonContentAsObj= \GuzzleHttp\Utils::jsonDecode($content);
+        $cartId= $jsonContentAsObj->cart_id;
+        $status= $jsonContentAsObj->payment_result->response_status;
+        $message= $jsonContentAsObj->payment_result->response_message;
+        $tranRef= $jsonContentAsObj->tran_ref;
+        DB::update(
+            'UPDATE cart SET payment_status_via_callback = :status, payment_message_via_callback= :message,'
+            . 'callback_tran_ref= :tran_ref where cart_id = :id',
+                ['status'=> $status, 'message'=> $message, 'tran_ref'=> $tranRef, 'id'=> $cartId]
+            );
+    }
+
+    /**
+     * RESTful callable action receives the IPN request from the payment gateway after payment is processed
+     */
+    public function paymentIpn(Request $request){
+        //verify that it is a valid callback request
+        if($this->isValidCallbackRequest($request)){
+            //update the cart payment status
+            $this->updateCartByPaymentIpn($request);
+            $response= 'valid callback request';
         }else{
-          $response= 'INVALID request';
+            $response= 'INVALID callback request';
         }
 
         return response($response, 200)
-            ->header('Content-Type', 'text/plain');
+            ->header('Content-Type', 'text/plain');        
+    }
+
+    /** 
+     * update cart according to the payment final status
+     */
+    private function updateCartByPaymentIpn($request){
+        $content= $request->getContent();
+        $jsonContentAsObj= \GuzzleHttp\Utils::jsonDecode($content);
+        $cartId= $jsonContentAsObj->cart_id;
+        $status= $jsonContentAsObj->payment_result->response_status;
+        $message= $jsonContentAsObj->payment_result->response_message;
+        $tranRef= $jsonContentAsObj->tran_ref;
+        DB::update(
+            'UPDATE cart SET payment_status_via_ipn = :status, payment_message_via_ipn= :message,'
+            . 'ipn_tran_ref= :tran_ref where cart_id = :id',
+                ['status'=> $status, 'message'=> $message, 'tran_ref'=> $tranRef, 'id'=> $cartId]
+            );
     }
 
     /**
      * 
      */
-    private function simulateReturnRequest($signature, $content) {
+    private function simulateReturnRequest($content) {
         
         $baseUri= url(''). '/';
         $route= Route::getRoutes()->getByName('verify_return_request');
@@ -295,8 +390,8 @@ class Controller extends BaseController
             "country": "AE",
             "zip": "54321"
         },
-        "return": "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02",
-        "callback": "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02",
+        "return": "'. $this->returnUrl. '",
+        "callback": "'. $this->callbackUrl. '",
         "payment_token": "'. $token. '"
         }';
 
@@ -304,9 +399,9 @@ class Controller extends BaseController
         $response = $client->send($paymentRequest, ['timeout' => 2]);
         $responseBody = $response->getBody();
         $jsonResponseAsObj= \GuzzleHttp\Utils::jsonDecode($responseBody);
-
+        
+        //if valid response and it contains a redirect_url to proceed with payment then redirect the client to it
         if($response->getStatusCode() ==200 && $jsonResponseAsObj->redirect_url ){
-            //redirect
             $jsonResponseAsObj->redirect_url;
             return \Illuminate\Support\Facades\Redirect::to($jsonResponseAsObj->redirect_url);
         }

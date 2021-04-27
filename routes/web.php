@@ -18,9 +18,15 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/initiate', [Controller::class, 'initiateHostedPayment'])->name('initiate_hosted_payment');
+Route::get('/', [Controller::class, 'index'])->name('index');
+
+Route::get('/purchaseWithHostedPayment', [Controller::class, 'purchaseWithHostedPayment'])->name('purchase_with_hosted_payment');
+
+Route::post('/doHostedPayment', [Controller::class, 'doHostedPayment'])->name('do_hosted_payment');
 
 Route::get('/collectRequest', [Controller::class, 'collectRequestDetails'])->name('collect_request_details');
+
+// new route accepts both get & post for just verifing return request signature
 
 Route::post('/verifyRequest', [Controller::class, 'verifyRequest'])->name('verify_request');
 

@@ -19,6 +19,8 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::match( ['get','post'], '/verifyCallbackRequest', [Controller::class, 'verifyCallbackRequest'])->name('verify_callback_request');
+Route::match( ['get','post'], '/paymentCallback', [Controller::class, 'paymentCallback'])->name('payment_callback');
+
+Route::match( ['get','post'], '/paymentIpn', [Controller::class, 'paymentIpn'])->name('payment_ipn');
 
 Route::match( ['get','post'], '/verifyReturnRequest', [Controller::class, 'verifyReturnRequest'])->name('verify_return_request');
