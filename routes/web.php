@@ -24,12 +24,18 @@ Route::get('/purchaseWithHostedPayment', [Controller::class, 'purchaseWithHosted
 
 Route::post('/doHostedPayment', [Controller::class, 'doHostedPayment'])->name('do_hosted_payment');
 
-Route::get('/collectRequest', [Controller::class, 'collectRequestDetails'])->name('collect_request_details');
-
 // new route accepts both get & post for just verifing return request signature
-
-Route::post('/verifyRequest', [Controller::class, 'verifyRequest'])->name('verify_request');
 
 Route::match( ['get', 'post'], '/managedForm', [Controller::class, 'managedForm'])->name('managed_form');
 
 Route::match( ['post'], '/processManagedForm', [Controller::class, 'processManagedForm'])->name('process_managed_form');
+
+Route::match( ['get', 'post'], '/ownForm', [Controller::class, 'ownForm'])->name('own_form');
+
+Route::match( ['post'], '/processOwnForm', [Controller::class, 'processOwnForm'])->name('process_own_form');
+
+Route::get( '/capture/{cartId}', [Controller::class, 'capture'])->name('capture');
+
+Route::get( '/void/{cartId}', [Controller::class, 'void'])->name('void');
+
+Route::get( '/refund/{cartId}', [Controller::class, 'refund'])->name('refund');

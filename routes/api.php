@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MerchantLaravelListenerApi;
 use App\Http\Controllers\Controller;
 
 /*
@@ -19,8 +20,10 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::match( ['get','post'], '/paymentCallback', [Controller::class, 'paymentCallback'])->name('payment_callback');
+Route::match( ['get','post'], '/paymentIPN', [MerchantLaravelListenerApi::class, 'paymentIPN'])->name('payment_ipn');
 
-Route::match( ['get','post'], '/paymentIpn', [Controller::class, 'paymentIpn'])->name('payment_ipn');
+Route::match( ['get','post'], '/paymentIPNBasic', [MerchantLaravelListenerApi::class, 'paymentIPNBasic'])->name('payment_ipn_basic');
 
-Route::match( ['get','post'], '/verifyReturnRequest', [Controller::class, 'verifyReturnRequest'])->name('verify_return_request');
+Route::match( ['get','post'], '/verifyReturnRequest', [MerchantLaravelListenerApi::class, 'verifyReturnRequest'])->name('verify_return_request');
+
+Route::get( '/lookup/{cartId}', [Controller::class, 'lookup'])->name('lookup');

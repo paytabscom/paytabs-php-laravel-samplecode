@@ -2,11 +2,17 @@
 
 @section('content')
 
-<script src="https://secure.paytabs.sa/payment/js/paylib.js"></script>
+<script src="{!! $js_lib_uri !!}js/paylib.js"></script>
 
 <form action="{{ route('process_managed_form') }}" id="payform" method="post">
   @csrf
-
+  <b>Select items to purchase:</b><br />
+    <input type="checkbox" name="products[1]" value="1" /> product #1 (1 SAR)<br />
+    <input type="checkbox" name="products[2]" value="5" /> product #2 (5 SAR)<br />
+    <input type="checkbox" name="products[3]" value="7" /> product #3 (7 SAR)<br />
+    <br />
+    
+    <b>Card details:</b><br />
   <span id="paymentErrors"></span>
   <div class="row">
     <label>Card Number</label>
@@ -21,13 +27,14 @@
     <label>Security Code</label>
     <input type="text" data-paylib="cvv" size="4">
   </div>
-  <input type="submit" value="Place order">
+  <div><input type="checkbox" value="1" name="auth" /> Delayed Purchase (Auth)</div>
+  <input type="submit" value="Place order" name="sale" > &nbsp; &nbsp; &nbsp;
 </form>
 
 <script type="text/javascript">
 var myform = document.getElementById('payform');
 paylib.inlineForm({
-  'key': 'CBKMMK-VBKM62-6PVNP6-RVTMHM',
+  'key': '{!! $client_key !!}',
   'form': myform,
   'autosubmit': true,
   'callback': function(response) {

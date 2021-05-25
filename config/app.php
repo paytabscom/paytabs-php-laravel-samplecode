@@ -230,4 +230,26 @@ return [
 
     ],
 
+//paytabs merchant
+    'gatewayServerKey' => 'S2JNNWHNZG-JB99JMHHR2-WHKDJTGL69',
+    'gatewayClientKey' => 'CVKMMK-VBMP62-PP6NHH-KTK7R7',
+    'paymentApiBaseUri'=> "https://secure.paytabs.sa/payment/",
+    'profileId' => "64594",
+    'cartTable' => "carts_paytabs"
+
+//clickPay merchant (the TEST profile)
+//    'gatewayServerKey' => '',
+//    'gatewayClientKey' => '',
+//    'paymentApiBaseUri'=> "https://secure.clickpay.com.sa/payment/",
+//    'profileId' => "42008",
+//    'cartTable' => "carts_clickpay_test"
+
+//clickPay merchant (the LIVE profile)
+//    'gatewayServerKey' => '',
+//    'gatewayClientKey' => '',
+//    'paymentApiBaseUri'=> "https://secure.clickpay.com.sa/payment/",
+//    'profileId' => "",
+//    'cartTable' => "carts_clickpay_live"
+
+    
 ];
