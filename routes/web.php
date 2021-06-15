@@ -20,9 +20,11 @@ Route::get('/', function () {
 
 Route::get('/', [Controller::class, 'index'])->name('index');
 
-Route::get('/purchaseWithHostedPayment', [Controller::class, 'purchaseWithHostedPayment'])->name('purchase_with_hosted_payment');
+Route::get('/hostedPayment', [Controller::class, 'hostedPayment'])->name('hosted_payment');
+Route::get('/hostedPaymentLaravelPkg', [Controller::class, 'hostedPayment'])->name('hosted_payment_laravel_pkg');
 
-Route::post('/doHostedPayment', [Controller::class, 'doHostedPayment'])->name('do_hosted_payment');
+Route::post('/hostedPayment', [Controller::class, 'doHostedPayment'])->name('do_hosted_payment');
+Route::post('/hostedPaymentLaravelPkg', [Controller::class, 'doHostedPaymentLaravelPkg'])->name('do_hosted_payment_laravel_pkg');
 
 // new route accepts both get & post for just verifing return request signature
 
@@ -39,3 +41,7 @@ Route::get( '/capture/{cartId}', [Controller::class, 'capture'])->name('capture'
 Route::get( '/void/{cartId}', [Controller::class, 'void'])->name('void');
 
 Route::get( '/refund/{cartId}', [Controller::class, 'refund'])->name('refund');
+
+Route::get( '/paymentFinished', [Controller::class, 'paymentFinished'])->name('payment_finished');
+
+

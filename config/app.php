@@ -161,6 +161,7 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+        Paytabscom\Laravel_paytabs\PaypageServiceProvider::class,
 
         /*
          * Package Service Providers...
@@ -238,8 +239,8 @@ return [
     'cartTable' => "carts_paytabs"
 
 //clickPay merchant (the TEST profile)
-//    'gatewayServerKey' => '',
-//    'gatewayClientKey' => '',
+//    'gatewayServerKey' => 'STJNLJWZRN-JBNRKHT9NK-T66NWR6BZL',
+//    'gatewayClientKey' => 'C9KMD9-HRGD62-QRKH7P-VQ7KPM',
 //    'paymentApiBaseUri'=> "https://secure.clickpay.com.sa/payment/",
 //    'profileId' => "42008",
 //    'cartTable' => "carts_clickpay_test"
@@ -251,5 +252,11 @@ return [
 //    'profileId' => "",
 //    'cartTable' => "carts_clickpay_live"
 
-    
+//clickPay merchant (Hamad LIVE profile)
+//    'gatewayServerKey' => 'SKJNLJZ9M6-JBMMBZDRGR-NKJZBTGZ9R',
+//    'gatewayClientKey' => 'CVKMD9-GNPG62-NN29DR-VN6GV7',
+//    'paymentApiBaseUri'=> "https://secure.clickpay.com.sa/payment/",
+//    'profileId' => "42024",
+//    'cartTable' => "carts_clickpay_live_hamad"
+
 ];

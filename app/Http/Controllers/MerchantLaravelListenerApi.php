@@ -7,8 +7,10 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
-use App\Http\Middleware\IpnRequest;
 use Illuminate\Support\Facades\DB;
+use Paytabscom\Laravel_paytabs\IpnRequest;
+use Paytabscom\Laravel_paytabs\BadRequestException;
+use Illuminate\Foundation\Http\Exceptions\MaintenanceModeException;
 
 class MerchantLaravelListenerApi extends BaseController
 {
@@ -18,38 +20,16 @@ class MerchantLaravelListenerApi extends BaseController
      * RESTful callable action receives: callback request\IPN Default Web request from the payment gateway after payment is processed
      */
     public function paymentIPN(Request $request){
-        //verify that it is a valid callback request\IPN Default Web request
-        if(IpnRequest::isValidIPNRequest($request)){
-            //update the cart payment status
-            $content= $request->getContent();
-            $jsonContentAsObj= \GuzzleHttp\Utils::jsonDecode($content);
-            self::updateCartByPaymentIPN($jsonContentAsObj);
-            $response= 'valid callback\IPN request';
-        }else{
-            $response= 'INVALID callback\IPN request';
+        try{
+            $ipnRequest= new IpnRequest($request);
+            self::updateCartByPaymentIPN($ipnRequest->getIpnRequestDetails());
+            $response= 'valid callback\IPN request. Cart updated';
+            return response($response, 200)
+                ->header('Content-Type', 'text/plain');        
+        }catch(\Exception $e){
+            return response($e, 200)
+                ->header('Content-Type', 'text/plain');        
         }
-
-        return response($response, 200)
-            ->header('Content-Type', 'text/plain');        
-    }
-
-    /**
-     * RESTful callable action receives the IPN request from the payment gateway after payment is processed
-     */
-    public function paymentIPNBasic(Request $request){
-        //verify that it is a valid callback request
-        if(IpnRequest::isValidIPNBasicRequest($request)){
-            //update the cart payment status
-            $content= $request->getContent();
-            $jsonContentAsObj= \GuzzleHttp\Utils::jsonDecode($content);
-            self::updateCartByPaymentIPNBasic($jsonContentAsObj);
-            $response= 'valid IPN Basic request';
-        }else{
-            $response= 'INVALID IPN Basic request';
-        }
-
-        return response($response, 200)
-            ->header('Content-Type', 'text/plain');        
     }
 
     /**

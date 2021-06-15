@@ -5,6 +5,7 @@
 <form action="{{ route('process_own_form') }}" id="payform" method="post">
   @csrf
   <b>Select items to purchase:</b><br />
+    <input type="checkbox" name="products[0]" value="0.5" /> product #0 (0.5 SAR)<br />
     <input type="checkbox" name="products[1]" value="1" /> product #1 (1 SAR)<br />
     <input type="checkbox" name="products[2]" value="5" /> product #2 (5 SAR)<br />
     <input type="checkbox" name="products[3]" value="7" /> product #3 (7 SAR)<br />

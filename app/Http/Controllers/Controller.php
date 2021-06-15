@@ -10,12 +10,15 @@ use Illuminate\Http\Request;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Paytabscom\Laravel_paytabs\Facades\paypage;
 
 class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    private $returnUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/return";
+    private $returnUrl = "http://localhost/paytabs-api-laravel/public/paymentFinished";
+    //private $returnUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/return";
     private $callbackUrl = "https://webhook.site/5727c9aa-3417-4ce6-926c-c1cc5958ec02/callback";
 
     /**
@@ -49,7 +52,7 @@ class Controller extends BaseController
      *
      * @return \Illuminate\View\View
      */
-    public function purchaseWithHostedPayment()
+    public function hostedPayment()
     {        
         return view('hosted_payment.purchase_with_hosted_payment');
     }
@@ -140,6 +143,44 @@ class Controller extends BaseController
         return view('simple_output', [
             'output' => $output
         ]);
+    }
+
+    /**
+     * 
+     * @return \Illuminate\View\View
+     */
+    public function doHostedPaymentLaravelPkg(Request $request)
+    {
+        $output= '';
+        $isFramedPayment = $request->input('framed');
+        $products = $request->input('products');
+        $productList= serialize(array_keys($products));
+        $total= array_sum($products);
+        $tranType= ($request->input('auth'))? 'auth':'sale';
+
+        DB::insert('INSERT INTO '. config('app.cartTable'). ' (products, total, tran_type) VALUES (?,?,?)', [$productList, $total, $tranType]);
+        $cartId = DB::getPdo()->lastInsertId();
+
+        $pay= paypage::sendPaymentCode('all')
+            ->sendTransaction('sale')
+            ->sendCart($cartId, $total, 'test')
+            ->sendCustomerDetails('Walaa Elsaeed', 'w.elsaeed@paytabs.com', '01092540925', 'test', 'Nasr City', 'Cairo', 'Egypt', '1234','100.279.20.10')
+            ->sendShippingDetails('Walaa Elsaeed', 'w.elsaeed@paytabs.com', '01092540925', 'test', 'Nasr City', 'Cairo', 'Egypt', '1234','100.279.20.10')
+            ->sendURLs($this->returnUrl, $this->callbackUrl)
+            ->sendLanguage('en');
+
+        //display the iframe
+        if($isFramedPayment){
+            $pay->sendFramed(true);
+            $paymentPageUrl = $pay->create_pay_page();
+            $output .= '<iframe width="600" height="800" src="'. $paymentPageUrl. '" ></iframe>';
+
+            return view('simple_output', [
+                'output' => $output
+                ]);
+        }
+        //redirect to the payment page
+        return $pay->create_pay_page();
     }
 
     /**
@@ -428,7 +469,7 @@ class Controller extends BaseController
         $client = new Client([
             'base_uri' => config('app.paymentApiBaseUri'), // Base URI is used with relative requests
             'timeout'  => 2.0, // You can set any number of default request options.
-//            'verify'   => false, //disable SSL cerificate verification
+            'verify'   => false, //disable SSL cerificate verification
         ]);
 
         $headers = ['Authorization' => config('app.gatewayServerKey') ];
@@ -456,4 +497,18 @@ class Controller extends BaseController
             );
     }
 
+    /**
+     * simple page for the payment API to return to
+     *
+     * @return \Illuminate\View\View
+     */
+    public function paymentFinished()
+    {
+        
+        
+        
+        return view('simple_output', [
+            'output' => 'Payment finished!'
+        ]);
+    }
 }
